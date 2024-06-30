@@ -27,7 +27,7 @@ jobs:
       run: |
         mkdir -p domain-list
         echo "number of domains to check: $(wc -l < domains.txt)"
-        nohup bash script/domain_checker.sh domains.txt 100 > domain-list/domains.txt &
+        nohup bash script/domain_checker.sh domains.txt 60 > domain-list/domains.txt &
         CHECKER_PID=$!
         
         while kill -0 $CHECKER_PID 2>/dev/null; do
