@@ -20,7 +20,7 @@ jobs:
     - name: Download list of domains
       run: |
         curl -sSfLO https://github.com/bootmortis/iran-hosted-domains/releases/latest/download/domains.txt
-        head -1000 domains.txt > temp.txt
+        head -5000 domains.txt > temp.txt
         mv -f temp.txt domains.txt
     
     - name: Run check
