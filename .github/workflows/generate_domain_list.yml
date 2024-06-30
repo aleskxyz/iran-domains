@@ -1,0 +1,75 @@
+name: Generate domain list
+
+on:
+  schedule:
+  - cron: "0 6 * * 5"
+  workflow_dispatch:
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install parallel package
+      run: |
+        apt install parallel -y
+
+    - name: Download list of domains
+      run: |
+        curl -sSfLO https://github.com/bootmortis/iran-hosted-domains/releases/latest/download/domains.txt
+        head -1000 domains.txt > temp.txt
+        mv -f temp.txt domains.txt
+    
+    - name: Run check
+      run: |
+        mkdir -p domain-list
+        echo "number of domains to check: $(wc -l < domains.txt)"
+        bash script/domain_checker.sh domains.txt 50 > domain-list/domains.txt
+        echo "number of working domains: $(wc -l < domain-list/domains.txt)"
+
+    - name: Set ENV variables
+      run: |
+        echo "RELEASE_NAME=$(date +%Y%m%d%H%M)" >> $GITHUB_ENV
+        echo "TAG_NAME=$(date +%Y%m%d%H%M)" >> $GITHUB_ENV
+        echo "RELEASE_DATE=$(date +'%A %F %T %Z')" >> $GITHUB_ENV
+
+    - name: Generate Release Notes
+      run: |
+        echo "* Updated on ${{ env.RELEASE_DATE }}" > RELEASE_NOTES
+
+    - name: Push to domain-list branch
+      run: |
+        cd domain-list || exit 1
+        git init
+        git config --local user.name "github-actions[bot]"
+        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git checkout -b domain-list
+        git add .
+        git commit -m "${{ env.RELEASE_NAME }}"
+        git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
+        git push -f origin domain-list
+
+    - name: Purge jsDelivr CDN cache
+      run: |
+        curl -i "https://purge.jsdelivr.net/gh/${{ github.repository }}@domain-list/domains.txt"
+
+    - name: Release and upload assets
+      uses: softprops/action-gh-release@v2
+      with:
+        name: ${{ env.RELEASE_NAME }}
+        tag_name: ${{ env.TAG_NAME }}
+        body_path: RELEASE_NOTES
+        draft: false
+        files: ./domain-list/domains.txt
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Clean older releases
+      uses: dev-drprasad/delete-older-releases@v0.3.3
+      with:
+        keep_latest: 7
+        delete_tags: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
