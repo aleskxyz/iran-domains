@@ -15,7 +15,7 @@ jobs:
     - name: Install parallel package
       run: |
         sudo apt update
-        sudo apt install parallel -y
+        sudo apt install parallel sysstat -y
 
     - name: Download list of domains
       run: |
@@ -27,8 +27,15 @@ jobs:
       run: |
         mkdir -p domain-list
         echo "number of domains to check: $(wc -l < domains.txt)"
-        bash script/domain_checker.sh domains.txt 50 > domain-list/domains.txt
-        echo "number of working domains: $(wc -l < domain-list/domains.txt)"
+        nohup bash script/domain_checker.sh domains.txt 50 > domain-list/domains.txt &
+        CHECKER_PID=$!
+        
+        while kill -0 $CHECKER_PID 2>/dev/null; do
+          echo "Number of working domains: $(wc -l < domain-list/domains.txt)"
+          ps aux | grep curl | wc -l
+          mpstat -P ALL 1 1 | awk '/Average/ && $2 ~ /[0-9]+/ {print "CPU"$2 ": " 100 - $12 "%"}'
+          sleep 1
+        done
 
     - name: Set ENV variables
       run: |
