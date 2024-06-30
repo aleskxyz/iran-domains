@@ -14,7 +14,8 @@ jobs:
 
     - name: Install parallel package
       run: |
-        apt install parallel -y
+        sudo apt update
+        sudo apt install parallel -y
 
     - name: Download list of domains
       run: |
