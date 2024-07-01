@@ -12,28 +12,23 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Install parallel package
-      run: |
-        sudo apt update
-        sudo apt install parallel sysstat -y
-
     - name: Download list of domains
       run: |
         curl -sSfLO https://github.com/bootmortis/iran-hosted-domains/releases/latest/download/domains.txt
-        head -5000 domains.txt > temp.txt
-        mv -f temp.txt domains.txt
     
     - name: Run check
+      timeout-minutes: 90
       run: |
         mkdir -p domain-list
         echo "number of domains to check: $(wc -l < domains.txt)"
-        nohup bash script/domain_checker.sh domains.txt 70 > domain-list/domains.txt &
+        nohup bash script/domain_checker.sh domains.txt 60 > domain-list/domains.txt &
         CHECKER_PID=$!
         
         while kill -0 $CHECKER_PID 2>/dev/null; do
-          echo "Concurrent checks: $(ps aux | grep curl | wc -l)"
+          echo "Concurrent checks: $(ps aux | grep '[c]url' | wc -l)"
           mpstat -P ALL 1 1 | awk '/Average/ && $2 ~ /[0-9]+/ {print "CPU"$2 ": " 100 - $12 "%"}'
-          sleep 1
+          echo
+          sleep 60
         done
 
         echo "Number of working domains: $(wc -l < domain-list/domains.txt)"
