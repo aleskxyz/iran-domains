@@ -31,11 +31,12 @@ jobs:
         CHECKER_PID=$!
         
         while kill -0 $CHECKER_PID 2>/dev/null; do
-          echo "Number of working domains: $(wc -l < domain-list/domains.txt)"
-          ps aux | grep curl | wc -l
+          echo "Concurrent checks: $(ps aux | grep curl | wc -l)"
           mpstat -P ALL 1 1 | awk '/Average/ && $2 ~ /[0-9]+/ {print "CPU"$2 ": " 100 - $12 "%"}'
           sleep 1
         done
+
+        echo "Number of working domains: $(wc -l < domain-list/domains.txt)"
 
     - name: Set ENV variables
       run: |
